@@ -1,0 +1,552 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_BOOKS 100
+#define MAX_STUDENTS 100
+#define MAX_BORROW_RECORDS 200
+
+#define ADMIN_PASSWORD 1234
+
+typedef struct
+{
+    int bookId;
+    char title[100];
+    char department[30];
+    int totalCopies;
+    int availableCopies;
+} Book;
+
+typedef struct
+{
+    int studentId;
+    char name[50];
+    char department[30];
+} Student;
+
+typedef struct
+{
+    int studentId;
+    int bookId;
+    int isReturned;
+} BorrowRecord;
+
+/* Global arrays */
+Book books[MAX_BOOKS];
+Student students[MAX_STUDENTS];
+BorrowRecord borrowRecords[MAX_BORROW_RECORDS];
+
+int bookCount = 3;
+int studentCount = 0;
+int borrowCount = 0;
+
+/* Sample books */
+void initializeBooks(void)
+{
+    books[0] = (Book){101, "Engineering Mathematics", "Mathematics", 3, 3};
+    books[1] = (Book){102, "Classical Physics", "Physics", 2, 2};
+    books[2] = (Book){103, "Organic Chemistry", "Chemistry", 4, 4};
+}
+
+/* Display departments */
+void displayDepartments(void)
+{
+    printf("\nDepartments:\n");
+    printf("1. Mathematics\n");
+    printf("2. Physics\n");
+    printf("3. Chemistry\n");
+    printf("4. Computer Science\n");
+}
+
+/* Get department from user */
+void selectDepartment(char department[])
+{
+    int choice;
+
+    displayDepartments();
+    printf("Select department: ");
+    scanf("%d", &choice);
+
+    switch (choice)
+    {
+        case 1:
+            strcpy(department, "Mathematics");
+            break;
+        case 2:
+            strcpy(department, "Physics");
+            break;
+        case 3:
+            strcpy(department, "Chemistry");
+            break;
+        case 4:
+            strcpy(department, "Computer Science");
+            break;
+        default:
+            strcpy(department, "Invalid");
+    }
+}
+
+/* Add book - Admin */
+void addBook(void)
+{
+    if (bookCount >= MAX_BOOKS)
+    {
+        printf("Book storage is full!\n");
+        return;
+    }
+
+    Book newBook;
+
+    printf("\nEnter Book ID: ");
+    scanf("%d", &newBook.bookId);
+
+    /* Check duplicate ID */
+    for (int i = 0; i < bookCount; i++)
+    {
+        if (books[i].bookId == newBook.bookId)
+        {
+            printf("Book ID already exists!\n");
+            return;
+        }
+    }
+
+    printf("Enter book title: ");
+    scanf(" %99[^\n]", newBook.title);
+
+    selectDepartment(newBook.department);
+
+    if (strcmp(newBook.department, "Invalid") == 0)
+    {
+        printf("Invalid department!\n");
+        return;
+    }
+
+    printf("Enter number of copies: ");
+    scanf("%d", &newBook.totalCopies);
+
+    if (newBook.totalCopies <= 0)
+    {
+        printf("Copies must be greater than zero!\n");
+        return;
+    }
+
+    newBook.availableCopies = newBook.totalCopies;
+
+    books[bookCount] = newBook;
+    bookCount++;
+
+    printf("Book added successfully!\n");
+}
+
+/* Display books */
+void displayBooks(const char department[])
+{
+    int found = 0;
+
+    printf("\n========== BOOK LIST ==========\n");
+
+    for (int i = 0; i < bookCount; i++)
+    {
+        if (department == NULL ||
+            strcmp(books[i].department, department) == 0)
+        {
+            printf("\nBook ID       : %d\n", books[i].bookId);
+            printf("Title         : %s\n", books[i].title);
+            printf("Department    : %s\n", books[i].department);
+            printf("Total Copies  : %d\n", books[i].totalCopies);
+            printf("Available     : %d\n", books[i].availableCopies);
+
+            found = 1;
+        }
+    }
+
+    if (!found)
+    {
+        printf("No books found in this category.\n");
+    }
+}
+
+/* View books category-wise - Admin */
+void viewBooksByCategory(void)
+{
+    char department[30];
+
+    selectDepartment(department);
+
+    if (strcmp(department, "Invalid") == 0)
+    {
+        printf("Invalid department!\n");
+        return;
+    }
+
+    displayBooks(department);
+}
+
+/* Register student */
+void registerStudent(void)
+{
+    if (studentCount >= MAX_STUDENTS)
+    {
+        printf("Student storage is full!\n");
+        return;
+    }
+
+    Student newStudent;
+
+    printf("\nEnter Student ID: ");
+    scanf("%d", &newStudent.studentId);
+
+    for (int i = 0; i < studentCount; i++)
+    {
+        if (students[i].studentId == newStudent.studentId)
+        {
+            printf("Student ID already exists!\n");
+            return;
+        }
+    }
+
+    printf("Enter student name: ");
+    scanf(" %49[^\n]", newStudent.name);
+
+    selectDepartment(newStudent.department);
+
+    if (strcmp(newStudent.department, "Invalid") == 0)
+    {
+        printf("Invalid department!\n");
+        return;
+    }
+
+    students[studentCount] = newStudent;
+    studentCount++;
+
+    printf("Student registered successfully!\n");
+}
+
+/* Find student by ID */
+int findStudent(int studentId)
+{
+    for (int i = 0; i < studentCount; i++)
+    {
+        if (students[i].studentId == studentId)
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+/* Student borrow book */
+void borrowBook(int studentIndex)
+{
+    int bookId;
+    int bookIndex = -1;
+
+    if (borrowCount >= MAX_BORROW_RECORDS)
+    {
+        printf("Borrow record storage is full!\n");
+        return;
+    }
+
+    printf("\nEnter Book ID to borrow: ");
+    scanf("%d", &bookId);
+
+    /* Find book */
+    for (int i = 0; i < bookCount; i++)
+    {
+        if (books[i].bookId == bookId)
+        {
+            bookIndex = i;
+            break;
+        }
+    }
+
+    if (bookIndex == -1)
+    {
+        printf("Book not found!\n");
+        return;
+    }
+
+    /* Department restriction */
+    if (strcmp(students[studentIndex].department,
+               books[bookIndex].department) != 0)
+    {
+        printf("Access denied! You can borrow books only from your department.\n");
+        return;
+    }
+
+    /* Availability check */
+    if (books[bookIndex].availableCopies <= 0)
+    {
+        printf("Book is currently unavailable!\n");
+        return;
+    }
+
+    /* Prevent borrowing same book again if not returned */
+    for (int i = 0; i < borrowCount; i++)
+    {
+        if (borrowRecords[i].studentId ==
+                students[studentIndex].studentId &&
+            borrowRecords[i].bookId == bookId &&
+            borrowRecords[i].isReturned == 0)
+        {
+            printf("You have already borrowed this book!\n");
+            return;
+        }
+    }
+
+    /* Create borrowing record */
+    borrowRecords[borrowCount].studentId =
+        students[studentIndex].studentId;
+
+    borrowRecords[borrowCount].bookId = bookId;
+    borrowRecords[borrowCount].isReturned = 0;
+
+    borrowCount++;
+
+    books[bookIndex].availableCopies--;
+
+    printf("Book borrowed successfully!\n");
+}
+
+/* Return book */
+void returnBook(int studentIndex)
+{
+    int bookId;
+    int recordIndex = -1;
+    int bookIndex = -1;
+
+    printf("\nEnter Book ID to return: ");
+    scanf("%d", &bookId);
+
+    /* Find active borrowing record */
+    for (int i = 0; i < borrowCount; i++)
+    {
+        if (borrowRecords[i].studentId ==
+                students[studentIndex].studentId &&
+            borrowRecords[i].bookId == bookId &&
+            borrowRecords[i].isReturned == 0)
+        {
+            recordIndex = i;
+            break;
+        }
+    }
+
+    if (recordIndex == -1)
+    {
+        printf("No active borrowing record found!\n");
+        return;
+    }
+
+    /* Find corresponding book */
+    for (int i = 0; i < bookCount; i++)
+    {
+        if (books[i].bookId == bookId)
+        {
+            bookIndex = i;
+            break;
+        }
+    }
+
+    if (bookIndex == -1)
+    {
+        printf("Book record not found!\n");
+        return;
+    }
+
+    /* Update records */
+    borrowRecords[recordIndex].isReturned = 1;
+    books[bookIndex].availableCopies++;
+
+    printf("Book returned successfully!\n");
+}
+
+/* View student's borrowed books */
+void viewMyBooks(int studentIndex)
+{
+    int found = 0;
+
+    printf("\n========== MY BORROWED BOOKS ==========\n");
+
+    for (int i = 0; i < borrowCount; i++)
+    {
+        if (borrowRecords[i].studentId ==
+                students[studentIndex].studentId &&
+            borrowRecords[i].isReturned == 0)
+        {
+            for (int j = 0; j < bookCount; j++)
+            {
+                if (books[j].bookId == borrowRecords[i].bookId)
+                {
+                    printf("Book ID : %d\n", books[j].bookId);
+                    printf("Title   : %s\n", books[j].title);
+                    printf("====================================\n");
+                    found = 1;
+                }
+            }
+        }
+    }
+
+    if (!found)
+    {
+        printf("You have no borrowed books.\n");
+    }
+}
+
+/* Student menu */
+void studentMenu(int studentIndex)
+{
+    int choice;
+
+    do
+    {
+        printf("\n===== STUDENT MENU =====\n");
+        printf("1. View Department Books\n");
+        printf("2. Borrow Book\n");
+        printf("3. Return Book\n");
+        printf("4. View My Borrowed Books\n");
+        printf("5. Logout\n");
+        printf("Enter choice: ");
+
+        scanf("%d", &choice);
+
+        switch (choice)
+        {
+            case 1:
+                displayBooks(students[studentIndex].department);
+                break;
+
+            case 2:
+                borrowBook(studentIndex);
+                break;
+
+            case 3:
+                returnBook(studentIndex);
+                break;
+
+            case 4:
+                viewMyBooks(studentIndex);
+                break;
+
+            case 5:
+                printf("Logged out.\n");
+                break;
+
+            default:
+                printf("Invalid choice!\n");
+        }
+
+    } while (choice != 5);
+}
+
+/* Admin menu */
+void adminMenu(void)
+{
+    int choice;
+
+    do
+    {
+        printf("\n===== ADMIN MENU =====\n");
+        printf("1. Add Book\n");
+        printf("2. View All Books\n");
+        printf("3. View Books By Category\n");
+        printf("4. Logout\n");
+        printf("Enter choice: ");
+
+        scanf("%d", &choice);
+
+        switch (choice)
+        {
+            case 1:
+                addBook();
+                break;
+
+            case 2:
+                displayBooks(NULL);
+                break;
+
+            case 3:
+                viewBooksByCategory();
+                break;
+
+            case 4:
+                printf("Admin logged out.\n");
+                break;
+
+            default:
+                printf("Invalid choice!\n");
+        }
+
+    } while (choice != 4);
+}
+
+/* Main */
+int main(void)
+{
+    int choice;
+    int password;
+    int studentId;
+    int studentIndex;
+
+    initializeBooks();
+
+    do
+    {
+        printf("\n===== LIBRARY MANAGEMENT SYSTEM =====\n");
+        printf("1. Admin Login\n");
+        printf("2. Student Registration\n");
+        printf("3. Student Login\n");
+        printf("4. Exit\n");
+        printf("Enter choice: ");
+
+        scanf("%d", &choice);
+
+        switch (choice)
+        {
+            case 1:
+                printf("Enter admin password: ");
+                scanf("%d", &password);
+
+                if (password == ADMIN_PASSWORD)
+                {
+                    adminMenu();
+                }
+                else
+                {
+                    printf("Incorrect password!\n");
+                }
+                break;
+
+            case 2:
+                registerStudent();
+                break;
+
+            case 3:
+                printf("Enter Student ID: ");
+                scanf("%d", &studentId);
+
+                studentIndex = findStudent(studentId);
+
+                if (studentIndex == -1)
+                {
+                    printf("Student not found! Please register first.\n");
+                }
+                else
+                {
+                    printf("Welcome, %s!\n",
+                           students[studentIndex].name);
+                    studentMenu(studentIndex);
+                }
+                break;
+
+            case 4:
+                printf("Exiting Library Management System.\n");
+                break;
+
+            default:
+                printf("Invalid choice!\n");
+        }
+
+    } while (choice != 4);
+
+    return 0;
+}
